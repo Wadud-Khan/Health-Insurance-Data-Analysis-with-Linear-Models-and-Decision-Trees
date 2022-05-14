@@ -1,0 +1,314 @@
+---
+title: "Insurance Forecasting with Linear Models and Regression Trees"
+author: "Wadud Khan"
+date: '2022-03-23'
+output:
+  html_document:
+    theme: cerulean
+    highlight: haddock
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+```
+
+
+In order to make money,insurance companies need to collect more in premiums than it spends on medical care to its beneficiaries. Every insurer makes a significant portion of its revenue by underwriting, which is basically charging a fee (called a premium) for taking on financial risk. 
+
+A great deal of time and money is invested to employ statistical and mathematical models to evaluate and mitigate the financial risk involved in different scenarios. 
+  
+--- 
+
+## I The Data
+ 
+The data comes from the book *Machine Learning with R* by Brett Lantz. We should note that the data was simulated using hypothetical medical expenses, and demographic statistics from the *US Census Bureau*. It **approximately** reflects real-world conditions. 
+
+The dataset contains 1,338 observations and 6 variables. Here is a run down of each variable individually:
+
+__age__ : An integer indicating the age of the beneficiary
+
+__sex__ : The policy holders gender
+
+__bmi__ : The Body Mass index of the beneficiary. It's a measure of how  overweight or underweight a person is   relative  to their height. BMI is  equal to weight(kilograms) divided by height(meters)squared. An ideal BMI is within   the range of 18.5 to 24.9
+
+__children__: An integer indicating the number of children/dependents covered by the insurance plan
+
+__smoker__: A yes or no categorical variable that indicates whether the insured regularly smokes tobacco.
+
+__region__: The beneficiary's place of residence in the US divided into four geographic regions: northeast, southeast, southwest, or northwest.
+
+---------------------------------------------------------------------------------------------------------------
+
+## II Data Exploration and Descriptive Statistics
+```{r results='hide'}
+#reading in the data
+insurance <- read.csv("C:/Users/Wadud/Downloads/insurance.csv")
+insurance$children <- as.character(insurance$children)
+```
+
+
+```{r warning=FALSE, message=FALSE}
+#loading any necessary packages
+
+library(plotly)
+library(ggplot2)
+library(GGally)
+library(dplyr)
+library(devtools)
+library(reshape2)
+```
+
+To understand our data it would be wise to get a feel of the distributions of any numeric variables. 
+
+```{r}
+str(insurance)
+
+#Distribution of Age
+ggplot(insurance, aes(age))+
+  geom_bar(bins=24)+
+  labs(title= "Distribution of Age") +
+  theme(
+  panel.background = element_rect(fill = "lightblue", colour = "lightblue",size = 0.5, linetype = "solid"),
+  panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+  panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+
+#Distribution of BMI
+ggplot(insurance,aes(bmi))+
+  geom_histogram(bins = 25)+
+  labs(title= "Distribution of BMI") +
+  theme(
+  panel.background = element_rect(fill = "lightblue", colour = "lightblue",size =  0.5,   linetype = "solid"),
+  panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+  panel.grid.minor = element_line(size = 0.25, linetype = 'solid',colour = "white"))
+
+
+#Distribution of Children
+ggplot(insurance, aes(children))+
+  geom_bar()+
+  labs(title= "Distribution of Dependents Covered") +
+  theme(
+  panel.background = element_rect(fill = "lightblue",colour = "lightblue", size = 0.5,   linetype = "solid"),
+  panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+  panel.grid.minor = element_line(size = 0.25, linetype = 'solid', colour = "white"))
+
+
+#Distribution of Charges
+ggplot(insurance,aes(charges))+
+  geom_histogram(bins = 32)+
+  labs(title= "Distribution of Charges") +
+  theme(
+  panel.background = element_rect(fill = "lightblue", colour = "lightblue",size =  0.5,   linetype = "solid"),
+  panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+  panel.grid.minor = element_line(size = 0.25, linetype = 'solid',colour = "white"))
+
+```
+
+###Box Plots of Categorical Variables
+
+```{r}
+plot_ly(insurance, y = ~charges, color = ~sex, type = "box")%>%
+  layout(title="Comparison of Charges Between Genders")
+
+```
+
+```{r}
+plot_ly(insurance, y = ~charges, color = ~children, type = "box")%>%
+   layout(title="Comparison of Charges Between Number of Dependents")
+```
+We can use a scatterplot matrix to quickly visualize the relationship between any two variables:
+
+```{r}
+insurance$children <- as.integer(insurance$children)
+ggpairs(insurance, columns = c("age","bmi","children","charges"), title = "Scatterplot Matrix")+
+  theme(
+  panel.background = element_rect(fill = "lightblue", colour = "lightblue",size =  0.5,   linetype = "solid"),
+  panel.grid.major = element_line(size = 0.5, linetype = 'solid', colour = "white"), 
+  panel.grid.minor = element_line(size = 0.25, linetype = 'solid',colour = "white"))
+```
+
+
+
+## III \ Linear Models
+
+Linear Regression is the most widely used predictive analytic technique.
+
+```{r}
+ins_model <- lm(charges ~ age + children + bmi + sex +
+    smoker + region, data = insurance)
+ins_model
+```
+
+### 3D Scatter Plot 
+
+A 3D scatter plot allows us to plot on three axes to better understand how the relationship between them. 
+```{r}
+plot_ly(
+  insurance, x=~charges, y=~children, z=~bmi, 
+  color=~sex, colors = c('lightcoral', 'cornflowerblue')
+) %>%
+  add_markers() %>%
+  layout(
+    scene = list(title = list(text="3D Scatter Plot"),
+                 xaxis = list(title="Charges"),
+                 yaxis = list(title="# of Dependents"),
+                 zaxis = list(title="BMI"))
+  )
+
+```
+
+
+### Scatter Plot with Regression Line
+
+*work in progress*
+
+```{r}
+ins_model2 <- lm(charges ~ age + children, data = insurance)
+#ins_model2
+
+graph_reso <- .05
+
+#setting up axis
+axis_x <- seq(min(insurance$age), max(insurance$age), by = graph_reso)
+axis_y <- seq(min(min(insurance$children), max(insurance$children)), by = graph_reso)
+
+#Sample Points
+ins_model2_surface <- expand.grid(age=axis_x, children=axis_y, KEEP.OUT.ATTRS =F)
+ins_model2_surface$charges <- predict.lm(ins_model2, newdata = ins_model2_surface)
+ins_model2_surface <- acast(ins_model2_surface, children ~ age, value.var = "charges")
+
+hcolors=c("red","blue")[insurance$sex]
+charges_plot <- plot_ly(insurance, 
+        x = ~age, 
+        y = ~children, 
+        z = ~charges,
+        text = ~sex, # EDIT: ~ added
+        type = "scatter3d", 
+        mode = "markers",
+        marker = list(color = hcolors))
+
+charges_plot <- add_trace(p = charges_plot,
+                       z = ins_model2_surface,
+                       x = axis_x,
+                       y = axis_y,
+                       type = "surface")
+
+charges_plot
+```
+
+
+### Q-Q Plot
+
+A quantile-quantile plot is a visual check if the data set is from a theoretical distribution, like normal or cauchy. 
+
+```{r}
+ggplot(insurance, aes(sample = charges))+stat_qq()+theme_bw()+ggtitle("Q-Q Plot: Charges")
+```
+
+```{r}
+qplot(sample = charges, data = insurance, color=sex)+theme_bw()+ggtitle("Q-Q Plot:Charges by Sex")
+```
+
+```{r}
+qplot(sample = bmi, data = insurance, color=sex)+theme_bw()+ggtitle("Q=Q Plot: BMI by Sex")
+```
+
+
+
+```{r}
+qplot(sample = age, data = insurance, color=sex)+theme_bw()+ggtitle("Q=Q Plot: Age by Sex")
+```
+
+
+
+## \ IV A Sprinkle Of Machine Learning
+
+### What's a Decision Tree?
+
+Decision Trees/ Tree Based Methods  are a class of supervised machine learning algorithms, which are used in both classification (predicts discrete outcome) and regression (predicts continuous numeric outcomes) predictive modeling.
+
+Decision Trees are composed of nodes, branches and leafs. Each node represents an attribute (or **feature**), each branch represents a rule (or **decision**), and each leaf represents an outcome of our **target feature**. The depth of a tree is defined by the number of levels, not including the root node.
+
+Since we're predicting a continuous numeric variable - insurance premiums - we will use a version of a decision tree called a **Regression Tree**
+
+### Test/Train Split
+
+It is standard practice in machine learning to first split your data into two subsets- a set for training the model, and a set for testing the model. This is called the **Training Split** and the **Test Split** respectively. This is used to validate any insights and reduce the risk of over-fitting your model to your data.
+
+There is no rule as to the exact size split to make but it is sensible to reserve a larger split for training - a typical split is 80% training and 20% testing data.
+
+### Splitting The Data
+
+R has a useful package for creating regression trees called **rpart** (short for 'recursive partitioning')
+
+Another package, **rpart.plot** is used to visualize the tree.
+
+
+```{r results='hide', warning=FALSE, message=FALSE}
+#insurance <- read.csv("C:/Users/Wadud/Downloads/insurance.csv")
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+```
+
+Let's remind ourselves of our variables and data types:
+
+```{r}
+str(insurance)
+```
+
+
+You might be wondering, if our outcome variable is a numeric variable, can we still use categorical variables as features(predictors)?
+
+
+**YES**
+
+```{r}
+#creating our random split
+
+set.seed(1234)
+sample_size = floor(0.8*nrow(insurance))
+select_rows = sample(seq_len(nrow(insurance)),size = sample_size)
+
+#creating the training split
+insurance_training = insurance[select_rows,]
+
+#creating the testing split
+insurance_testing = insurance[-select_rows,]
+
+nrow(insurance_training)
+nrow(insurance_testing)
+
+```
+
+Our training data and testing data has 1070 and 268 rows respectively.
+
+### \ Creating the Regression Tree
+
+Here we will use the 'rpart' and 'rpart.plot' packages mentioned previously.
+
+```{r}
+insurance_model <- rpart(charges ~ age + sex + bmi + region + smoker + children, data = insurance_training, method = "anova", control=rpart.control(minsplit=100, cp=0.001))
+
+insurance_predictions <- predict(insurance_model,insurance_testing)
+
+insurance_model
+```
+
+This is our regression tree before visualization.
+We started out with 1070 observations, and then the data was split first on the "smoker" variable, so our model found this to be the most "predictive" feature.
+
+```{r}
+
+rpart.plot(insurance_model, type = 3, digits = 5, fallen.leaves = TRUE)
+```
+The Percent in the leaf nodes are the proportion of the training data of the training data, that have the conditions of the decision nodes before it. Hence it add up to 100% (the entire training split). The number above is the predicted average premiums paid across all those rows that meet the conditions.
+
+
+
+An interesting thing to note in our tree is that as far as the 'region' feature is concerned, northeast is grouped separately from the rest. The predicted cost of insurance premiums in this model is higher here, so this tells us that people generally pay higher premiums in the northeast region than any other region.
+
